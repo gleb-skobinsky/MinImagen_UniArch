@@ -16,7 +16,9 @@ from .layers import (
     ResnetBlock,
     SinusoidalPosEmb,
     TransformerBlock,
-    Upsample, Parallel, Identity
+    Upsample,
+    Parallel,
+    Identity,
 )
 
 from .t5 import get_encoded_dim
@@ -29,22 +31,21 @@ class Unet(nn.Module):
     """
 
     def __init__(
-            self,
-            *,
-            dim: int = 128,
-            dim_mults: tuple = (1, 2, 4),
-            channels: int = 3,
-            channels_out: int = None,
-            cond_dim: int = None,
-            text_embed_dim=get_encoded_dim('t5_small'),
-            num_resnet_blocks: Union[int, tuple] = 1,
-            layer_attns: Union[bool, tuple] = True,
-            layer_cross_attns: Union[bool, tuple] = True,
-            attn_heads: int = 8,
-            lowres_cond: bool = False,
-            memory_efficient: bool = False,
-            attend_at_middle: bool = False
-
+        self,
+        *,
+        dim: int = 128,
+        dim_mults: tuple = (1, 2, 4),
+        channels: int = 3,
+        channels_out: int = None,
+        cond_dim: int = None,
+        text_embed_dim=get_encoded_dim("t5_small"),
+        num_resnet_blocks: Union[int, tuple] = 1,
+        layer_attns: Union[bool, tuple] = True,
+        layer_cross_attns: Union[bool, tuple] = True,
+        attn_heads: int = 8,
+        lowres_cond: bool = False,
+        memory_efficient: bool = False,
+        attend_at_middle: bool = False,
     ):
         """
         :param dim: Number of channels at the greatest spatial resolution in the Unet. Recommended to be at least 128.
@@ -79,8 +80,8 @@ class Unet(nn.Module):
 
         # Save arguments locals to take care of some hyperparameters for cascading DDPM
         self._locals = locals()
-        self._locals.pop('self', None)
-        self._locals.pop('__class__', None)
+        self._locals.pop("self", None)
+        self._locals.pop("__class__", None)
 
         # Constants
         ATTN_DIM_HEAD = 64  # Dimensionality for attention.
@@ -88,8 +89,12 @@ class Unet(nn.Module):
         RESNET_GROUPS = 8  # Number of groups in ResNet block GroupNorms
 
         # Model constants
-        init_conv_to_final_conv_residual = False  # Whether to add skip connection between Unet input and output
-        final_resnet_block = True  # Whether to add a final resnet block to the output of the Unet
+        init_conv_to_final_conv_residual = (
+            False  # Whether to add skip connection between Unet input and output
+        )
+        final_resnet_block = (
+            True  # Whether to add a final resnet block to the output of the Unet
+        )
 
         # TIME CONDITIONING
 
@@ -99,20 +104,16 @@ class Unet(nn.Module):
 
         # Maps time to time hidden state
         self.to_time_hiddens = nn.Sequential(
-            SinusoidalPosEmb(dim),
-            nn.Linear(dim, time_cond_dim),
-            nn.SiLU()
+            SinusoidalPosEmb(dim), nn.Linear(dim, time_cond_dim), nn.SiLU()
         )
 
         # Maps time hidden state to time conditioning (non-attention)
-        self.to_time_cond = nn.Sequential(
-            nn.Linear(time_cond_dim, time_cond_dim)
-        )
+        self.to_time_cond = nn.Sequential(nn.Linear(time_cond_dim, time_cond_dim))
 
         # Maps time hidden states to time tokens for main conditioning tokens (attention)
         self.to_time_tokens = nn.Sequential(
             nn.Linear(time_cond_dim, cond_dim * NUM_TIME_TOKENS),
-            Rearrange('b (r d) -> b r d', r=NUM_TIME_TOKENS)
+            Rearrange("b (r d) -> b r d", r=NUM_TIME_TOKENS),
         )
 
         # LOW RES NOISE CONDITIONING AUGMENTATION
@@ -123,9 +124,7 @@ class Unet(nn.Module):
         # Same as above but for low-res images
         if lowres_cond:
             self.to_lowres_time_hiddens = nn.Sequential(
-                SinusoidalPosEmb(dim),
-                nn.Linear(dim, time_cond_dim),
-                nn.SiLU()
+                SinusoidalPosEmb(dim), nn.Linear(dim, time_cond_dim), nn.SiLU()
             )
 
             self.to_lowres_time_cond = nn.Sequential(
@@ -134,7 +133,7 @@ class Unet(nn.Module):
 
             self.to_lowres_time_tokens = nn.Sequential(
                 nn.Linear(time_cond_dim, cond_dim * NUM_TIME_TOKENS),
-                Rearrange('b (r d) -> b r d', r=NUM_TIME_TOKENS)
+                Rearrange("b (r d) -> b r d", r=NUM_TIME_TOKENS),
             )
 
         # TEXT CONDITIONING
@@ -157,7 +156,7 @@ class Unet(nn.Module):
             nn.LayerNorm(cond_dim),
             nn.Linear(cond_dim, time_cond_dim),
             nn.SiLU(),
-            nn.Linear(time_cond_dim, time_cond_dim)
+            nn.Linear(time_cond_dim, time_cond_dim),
         )
 
         # UNET LAYERS
@@ -166,10 +165,12 @@ class Unet(nn.Module):
         self.channels_out = default(channels_out, channels)
 
         # Initial convolution that brings input images to proper number of channels for the Unet
-        self.init_conv = CrossEmbedLayer(channels if not lowres_cond else channels * 2,
-                                         dim_out=dim,
-                                         kernel_sizes=(3, 7, 15),
-                                         stride=1)
+        self.init_conv = CrossEmbedLayer(
+            channels if not lowres_cond else channels * 2,
+            dim_out=dim,
+            kernel_sizes=(3, 7, 15),
+            stride=1,
+        )
 
         # Determine channel numbers for UNet descent/ascent and then zip into in/out pairs
         dims = [dim, *map(lambda m: dim * m, dim_mults)]
@@ -188,17 +189,28 @@ class Unet(nn.Module):
         # Make sure relevant tuples have one elt for each layer in the UNet (if tuples rather than single values passed
         #   in as arguments)
         assert all(
-            [layers == num_resolutions for layers in list(map(len, (resnet_groups, layer_attns, layer_cross_attns)))])
+            [
+                layers == num_resolutions
+                for layers in list(
+                    map(len, (resnet_groups, layer_attns, layer_cross_attns))
+                )
+            ]
+        )
 
         # Scale for resnet skip connections
-        self.skip_connect_scale = 2 ** -0.5
+        self.skip_connect_scale = 2**-0.5
 
         # Downsampling and Upsampling modules of the Unet
         self.downs = nn.ModuleList([])
         self.ups = nn.ModuleList([])
 
         # Parameter lists for downsampling and upsampling trajectories
-        layer_params = [num_resnet_blocks, resnet_groups, layer_attns, layer_cross_attns]
+        layer_params = [
+            num_resnet_blocks,
+            resnet_groups,
+            layer_attns,
+            layer_cross_attns,
+        ]
         reversed_layer_params = list(map(reversed, layer_params))
 
         # DOWNSAMPLING LAYERS
@@ -207,8 +219,13 @@ class Unet(nn.Module):
         skip_connect_dims = []
 
         # For each layer in the Unet
-        for ind, ((dim_in, dim_out), layer_num_resnet_blocks, groups, layer_attn, layer_cross_attn) in enumerate(
-                zip(in_out, *layer_params)):
+        for ind, (
+            (dim_in, dim_out),
+            layer_num_resnet_blocks,
+            groups,
+            layer_attn,
+            layer_cross_attn,
+        ) in enumerate(zip(in_out, *layer_params)):
 
             is_last = ind == (num_resolutions - 1)
 
@@ -230,58 +247,92 @@ class Unet(nn.Module):
             # Downsample at the end of the layer if not `pre_downsample`
             post_downsample = None
             if not memory_efficient:
-                post_downsample = Downsample(current_dim, dim_out) if not is_last else Parallel(
-                    nn.Conv2d(dim_in, dim_out, 3, padding=1), nn.Conv2d(dim_in, dim_out, 1))
+                post_downsample = (
+                    Downsample(current_dim, dim_out)
+                    if not is_last
+                    else Parallel(
+                        nn.Conv2d(dim_in, dim_out, 3, padding=1),
+                        nn.Conv2d(dim_in, dim_out, 1),
+                    )
+                )
 
             # Create the layer
-            self.downs.append(nn.ModuleList([
-                pre_downsample,
-                # ResnetBlock that conditions, in addition to time, on the main tokens via cross attention.
-                ResnetBlock(current_dim,
+            self.downs.append(
+                nn.ModuleList(
+                    [
+                        pre_downsample,
+                        # ResnetBlock that conditions, in addition to time, on the main tokens via cross attention.
+                        ResnetBlock(
+                            current_dim,
                             current_dim,
                             cond_dim=layer_cond_dim,
                             time_cond_dim=time_cond_dim,
-                            groups=groups),
-                # Sequence of ResnetBlocks that condition only on time
-                nn.ModuleList(
-                    [
-                        ResnetBlock(current_dim,
+                            groups=groups,
+                        ),
+                        # Sequence of ResnetBlocks that condition only on time
+                        nn.ModuleList(
+                            [
+                                ResnetBlock(
+                                    current_dim,
                                     current_dim,
                                     time_cond_dim=time_cond_dim,
-                                    groups=groups
-                                    )
-                        for _ in range(layer_num_resnet_blocks)
+                                    groups=groups,
+                                )
+                                for _ in range(layer_num_resnet_blocks)
+                            ]
+                        ),
+                        # Transformer encoder for multi-headed self attention
+                        transformer_block_klass(
+                            dim=current_dim, heads=attn_heads, dim_head=ATTN_DIM_HEAD
+                        ),
+                        post_downsample,
                     ]
-                ),
-                # Transformer encoder for multi-headed self attention
-                transformer_block_klass(dim=current_dim,
-                                        heads=attn_heads,
-                                        dim_head=ATTN_DIM_HEAD),
-                post_downsample,
-            ]))
+                )
+            )
 
         # MIDDLE LAYERS
 
         mid_dim = dims[-1]
 
         # ResnetBlock that incorporates cross-attention conditioning on main tokens
-        self.mid_block1 = ResnetBlock(mid_dim, mid_dim, cond_dim=cond_dim, time_cond_dim=time_cond_dim,
-                                      groups=resnet_groups[-1])
+        self.mid_block1 = ResnetBlock(
+            mid_dim,
+            mid_dim,
+            cond_dim=cond_dim,
+            time_cond_dim=time_cond_dim,
+            groups=resnet_groups[-1],
+        )
 
         # Optional residual self-attention
-        self.mid_attn = EinopsToAndFrom('b c h w', 'b (h w) c',
-                                        Residual(Attention(mid_dim, heads=attn_heads,
-                                                           dim_head=ATTN_DIM_HEAD))) if attend_at_middle else None
+        self.mid_attn = (
+            EinopsToAndFrom(
+                "b c h w",
+                "b (h w) c",
+                Residual(Attention(mid_dim, heads=attn_heads, dim_head=ATTN_DIM_HEAD)),
+            )
+            if attend_at_middle
+            else None
+        )
 
         # ResnetBlock that incorporates cross-attention conditioning on main tokens
-        self.mid_block2 = ResnetBlock(mid_dim, mid_dim, cond_dim=cond_dim, time_cond_dim=time_cond_dim,
-                                      groups=resnet_groups[-1])
+        self.mid_block2 = ResnetBlock(
+            mid_dim,
+            mid_dim,
+            cond_dim=cond_dim,
+            time_cond_dim=time_cond_dim,
+            groups=resnet_groups[-1],
+        )
 
         # UPSAMPLING LAYERS
 
         # For each layer in the unet
-        for ind, ((dim_in, dim_out), layer_num_resnet_blocks, groups, layer_attn, layer_cross_attn) in enumerate(
-                zip(reversed(in_out), *reversed_layer_params)):
+        for ind, (
+            (dim_in, dim_out),
+            layer_num_resnet_blocks,
+            groups,
+            layer_attn,
+            layer_cross_attn,
+        ) in enumerate(zip(reversed(in_out), *reversed_layer_params)):
             is_last = ind == (num_resolutions - 1)
             layer_cond_dim = cond_dim if layer_cross_attn else None
 
@@ -291,56 +342,78 @@ class Unet(nn.Module):
             skip_connect_dim = skip_connect_dims.pop()
 
             # Create the layer
-            self.ups.append(nn.ModuleList([
-                # Same as `downs` except add channels for skip-connect
-                ResnetBlock(dim_out + skip_connect_dim,
+            self.ups.append(
+                nn.ModuleList(
+                    [
+                        # Same as `downs` except add channels for skip-connect
+                        ResnetBlock(
+                            dim_out + skip_connect_dim,
                             dim_out,
                             cond_dim=layer_cond_dim,
                             time_cond_dim=time_cond_dim,
-                            groups=groups),
-                # Same as `downs` except add channels for skip-connect
-                nn.ModuleList(
-                    [
-                        ResnetBlock(dim_out + skip_connect_dim,
+                            groups=groups,
+                        ),
+                        # Same as `downs` except add channels for skip-connect
+                        nn.ModuleList(
+                            [
+                                ResnetBlock(
+                                    dim_out + skip_connect_dim,
                                     dim_out,
                                     time_cond_dim=time_cond_dim,
-                                    groups=groups)
-                        for _ in range(layer_num_resnet_blocks)
-                    ]),
-                transformer_block_klass(dim=dim_out,
-                                        heads=attn_heads,
-                                        dim_head=ATTN_DIM_HEAD),
-                # Upscale on the final layer too if memory_efficient to make sure get correct output size
-                Upsample(dim_out, dim_in) if not is_last or memory_efficient else Identity()
-            ]))
+                                    groups=groups,
+                                )
+                                for _ in range(layer_num_resnet_blocks)
+                            ]
+                        ),
+                        transformer_block_klass(
+                            dim=dim_out, heads=attn_heads, dim_head=ATTN_DIM_HEAD
+                        ),
+                        # Upscale on the final layer too if memory_efficient to make sure get correct output size
+                        Upsample(dim_out, dim_in)
+                        if not is_last or memory_efficient
+                        else Identity(),
+                    ]
+                )
+            )
 
         # Whether to do a final residual from initial conv to the final resnet block out
         self.init_conv_to_final_conv_residual = init_conv_to_final_conv_residual
         final_conv_dim = dim * (2 if init_conv_to_final_conv_residual else 1)
 
         # Final optional resnet block and convolution out
-        self.final_res_block = ResnetBlock(final_conv_dim, dim, time_cond_dim=time_cond_dim,
-                                           groups=resnet_groups[0]) if final_resnet_block else None
+        self.final_res_block = (
+            ResnetBlock(
+                final_conv_dim,
+                dim,
+                time_cond_dim=time_cond_dim,
+                groups=resnet_groups[0],
+            )
+            if final_resnet_block
+            else None
+        )
 
         # Final convolution to bring to right num channels
         final_conv_dim_in = dim if final_resnet_block else final_conv_dim
-        self.final_conv = nn.Conv2d(final_conv_dim_in, self.channels_out, 3,
-                                    padding=3 // 2)
+        self.final_conv = nn.Conv2d(
+            final_conv_dim_in, self.channels_out, 3, padding=3 // 2
+        )
 
     # if the current settings for the unet are not correct
     # for cascading DDPM, then reinit the unet with the right settings
     def _cast_model_parameters(
-            self,
-            *,
-            lowres_cond,
-            text_embed_dim,
-            channels,
-            channels_out,
+        self,
+        *,
+        lowres_cond,
+        text_embed_dim,
+        channels,
+        channels_out,
     ):
-        if lowres_cond == self.lowres_cond and \
-                channels == self.channels and \
-                text_embed_dim == self.text_embed_dim and \
-                channels_out == self.channels_out:
+        if (
+            lowres_cond == self.lowres_cond
+            and channels == self.channels
+            and text_embed_dim == self.text_embed_dim
+            and channels_out == self.channels_out
+        ):
             return self
 
         updated_kwargs = dict(
@@ -353,16 +426,16 @@ class Unet(nn.Module):
         return self.__class__(**{**self._locals, **updated_kwargs})
 
     def forward(
-            self,
-            x: torch.tensor,
-            time: torch.tensor,
-            *,
-            lowres_cond_img: torch.tensor = None,
-            lowres_noise_times: torch.tensor = None,
-            text_embeds: torch.tensor = None,
-            text_mask: torch.tensor = None,
-            cond_drop_prob: float = 0.
-            ) -> torch.tensor:
+        self,
+        x: torch.tensor,
+        time: torch.tensor,
+        *,
+        lowres_cond_img: torch.tensor = None,
+        lowres_noise_times: torch.tensor = None,
+        text_embeds: torch.tensor = None,
+        text_mask: torch.tensor = None,
+        cond_drop_prob: float = 0.0,
+    ) -> torch.tensor:
         """
         Unet forward pass.
 
@@ -381,16 +454,20 @@ class Unet(nn.Module):
 
         batch_size, device = x.shape[0], x.device
 
-        assert not (self.lowres_cond and not exists(lowres_cond_img)), \
-            'low resolution conditioning image must be present'
-        assert not (self.lowres_cond and not exists(lowres_noise_times)), \
-            'low resolution conditioning noise time must be present'
+        assert not (
+            self.lowres_cond and not exists(lowres_cond_img)
+        ), "low resolution conditioning image must be present"
+        assert not (
+            self.lowres_cond and not exists(lowres_noise_times)
+        ), "low resolution conditioning noise time must be present"
 
         # time conditioning
         t, time_tokens = self._generate_t_tokens(time, lowres_noise_times)
 
         # text conditioning
-        t, c = self._text_condition(text_embeds, batch_size, cond_drop_prob, device, text_mask, t, time_tokens)
+        t, c = self._text_condition(
+            text_embeds, batch_size, cond_drop_prob, device, text_mask, t, time_tokens
+        )
 
         # Concatenate low-res image to input if super-resolution Unet
         if exists(lowres_cond_img):
@@ -409,7 +486,13 @@ class Unet(nn.Module):
         hiddens = []
 
         # For every layer in the downwards trajectory
-        for pre_downsample, init_block, resnet_blocks, attn_block, post_downsample in self.downs:
+        for (
+            pre_downsample,
+            init_block,
+            resnet_blocks,
+            attn_block,
+            post_downsample,
+        ) in self.downs:
 
             # Downsample before processing at this resolution if using efficient UNet
             if exists(pre_downsample):
@@ -442,7 +525,9 @@ class Unet(nn.Module):
         # UPSAMPLING TRAJECTORY
 
         # Lambda function for skip connections
-        add_skip_connection = lambda x: torch.cat((x, hiddens.pop() * self.skip_connect_scale), dim=1)
+        add_skip_connection = lambda x: torch.cat(
+            (x, hiddens.pop() * self.skip_connect_scale), dim=1
+        )
 
         for init_block, resnet_blocks, attn_block, upsample in self.ups:
             # Concatenate the skip connection (post Transformer encoder) from the corresponding layer in the
@@ -472,10 +557,7 @@ class Unet(nn.Module):
         return self.final_conv(x)
 
     def forward_with_cond_scale(
-            self,
-            *args,
-            cond_scale: float = 1.,
-            **kwargs
+        self, *args, cond_scale: float = 1.0, **kwargs
     ) -> torch.tensor:
         """
         Adds `classifier-free guidance <https://www.assemblyai.com/blog/how-imagen-actually-works/#classifier-free-guidance>`_ to the forward pass.
@@ -502,15 +584,13 @@ class Unet(nn.Module):
 
         # Calculate unconditional NULL logits by always dropping conditioning in the forward pass (`cond_drop_prob=1.`)
         #   https://github.com/oconnoob/minimal_imagen/blob/minimal/images/clf_free_guidance.png
-        null_logits = self.forward(*args, cond_drop_prob=1., **kwargs)
+        null_logits = self.forward(*args, cond_drop_prob=1.0, **kwargs)
         return null_logits + (logits - null_logits) * cond_scale
 
     def _generate_t_tokens(
-            self,
-            time: torch.tensor,
-            lowres_noise_times: torch.tensor
-    ) -> tuple[torch.tensor, torch.tensor]:
-        '''
+        self, time: torch.tensor, lowres_noise_times: torch.tensor
+    ) -> tuple:
+        """
         Generate t and time_tokens
 
         :param time: Tensor of shape (b,). The timestep for each image in the batch.
@@ -519,7 +599,7 @@ class Unet(nn.Module):
             t: Tensor of shape (b, time_cond_dim) where `time_cond_dim` is 4x the UNet `dim`, or 8 if conditioning
             on lowres image.
             time_tokens: Tensor of shape (b, NUM_TIME_TOKENS, dim), where `NUM_TIME_TOKENS` defaults to 2.
-        '''
+        """
         time_hiddens = self.to_time_hiddens(time)
         t = self.to_time_cond(time_hiddens)
         time_tokens = self.to_time_tokens(time_hiddens)
@@ -536,16 +616,16 @@ class Unet(nn.Module):
         return t, time_tokens
 
     def _text_condition(
-            self,
-            text_embeds: torch.tensor,
-            batch_size: int,
-            cond_drop_prob: float,
-            device: torch.device,
-            text_mask: torch.tensor,
-            t: torch.tensor,
-            time_tokens: torch.tensor
-    ) -> tuple[torch.tensor, torch.tensor]:
-        '''
+        self,
+        text_embeds: torch.tensor,
+        batch_size: int,
+        cond_drop_prob: float,
+        device: torch.device,
+        text_mask: torch.tensor,
+        t: torch.tensor,
+        time_tokens: torch.tensor,
+    ) -> tuple:
+        """
         Condition on text.
 
         :param text_embeds: Text embedding from T5 encoder. Shape (b, mw, ed), where
@@ -566,7 +646,7 @@ class Unet(nn.Module):
             :code:`t`: Time conditioning tensor
 
             :code:`c`: Main conditioning tokens
-        '''
+        """
 
         text_tokens = None
         if exists(text_embeds):
@@ -575,7 +655,7 @@ class Unet(nn.Module):
             text_tokens = self.text_to_cond(text_embeds)
 
             # Truncate the tokens to have the maximum number of allotted words.
-            text_tokens = text_tokens[:, :self.max_text_len]
+            text_tokens = text_tokens[:, : self.max_text_len]
 
             # Pad the text tokens up to self.max_text_len if needed
             text_tokens_len = text_tokens.shape[1]
@@ -584,25 +664,31 @@ class Unet(nn.Module):
                 text_tokens = F.pad(text_tokens, (0, 0, 0, remainder))
 
             # Prob. mask for clf-free guidance conditional dropout. Tells which elts in the batch to keep. Size (b,).
-            text_keep_mask = prob_mask_like((batch_size,), 1 - cond_drop_prob, device=device)
+            text_keep_mask = prob_mask_like(
+                (batch_size,), 1 - cond_drop_prob, device=device
+            )
 
             # Combines T5 and clf-free guidance masks
-            text_keep_mask_embed = rearrange(text_keep_mask, 'b -> b 1 1')
+            text_keep_mask_embed = rearrange(text_keep_mask, "b -> b 1 1")
             if exists(text_mask):
                 if remainder > 0:
                     text_mask = F.pad(text_mask, (0, remainder), value=False)
 
-                text_mask = rearrange(text_mask, 'b n -> b n 1')  # (b, self.max_text_len, 1)
-                text_keep_mask_embed = text_mask & text_keep_mask_embed  # (b, self.max_text_len, 1)
+                text_mask = rearrange(
+                    text_mask, "b n -> b n 1"
+                )  # (b, self.max_text_len, 1)
+                text_keep_mask_embed = (
+                    text_mask & text_keep_mask_embed
+                )  # (b, self.max_text_len, 1)
 
             # Creates NULL tensor of size (1, self.max_text_len, cond_dim)
-            null_text_embed = self.null_text_embed.to(text_tokens.dtype)  # for some reason pytorch AMP not working
+            null_text_embed = self.null_text_embed.to(
+                text_tokens.dtype
+            )  # for some reason pytorch AMP not working
 
             # Replaces masked elements with NULL
             text_tokens = torch.where(
-                text_keep_mask_embed,
-                text_tokens,
-                null_text_embed
+                text_keep_mask_embed, text_tokens, null_text_embed
             )
 
             # Extra non-attention conditioning by projecting and then summing text embeddings to time (text hiddens)
@@ -610,23 +696,27 @@ class Unet(nn.Module):
             mean_pooled_text_tokens = text_tokens.mean(dim=-2)
 
             # Project to `time_cond_dim`
-            text_hiddens = self.to_text_non_attn_cond(mean_pooled_text_tokens)  # (b, cond_dim) -> (b, time_cond_dim)
+            text_hiddens = self.to_text_non_attn_cond(
+                mean_pooled_text_tokens
+            )  # (b, cond_dim) -> (b, time_cond_dim)
 
             null_text_hidden = self.null_text_hidden.to(t.dtype)
 
             # Drop relevant conditioning info as demanded by clf-free guidance mask
-            text_keep_mask_hidden = rearrange(text_keep_mask, 'b -> b 1')
+            text_keep_mask_hidden = rearrange(text_keep_mask, "b -> b 1")
             text_hiddens = torch.where(
-                text_keep_mask_hidden,
-                text_hiddens,
-                null_text_hidden
+                text_keep_mask_hidden, text_hiddens, null_text_hidden
             )
 
             # Add this conditioning to our `t` tensor
             t = t + text_hiddens
 
         # main conditioning tokens `c` - concatenate time/text tokens
-        c = time_tokens if not exists(text_tokens) else torch.cat((time_tokens, text_tokens), dim=-2)
+        c = (
+            time_tokens
+            if not exists(text_tokens)
+            else torch.cat((time_tokens, text_tokens), dim=-2)
+        )
 
         # normalize conditioning tokens
         c = self.norm_cond(c)
@@ -657,7 +747,7 @@ class Base(Unet):
         num_resnet_blocks=3,
         layer_attns=(False, True, True, True),
         layer_cross_attns=(False, True, True, True),
-        memory_efficient=False
+        memory_efficient=False,
     )
 
     def __init__(self, *args, **kwargs):
@@ -680,14 +770,16 @@ class Super(Unet):
 
     - memory_efficient = True
     """
+
     defaults = dict(
         dim=128,
         dim_mults=(1, 2, 4, 8),
         num_resnet_blocks=(2, 4, 8, 8),
         layer_attns=(False, False, False, True),
         layer_cross_attns=(False, False, False, True),
-        memory_efficient=True
+        memory_efficient=True,
     )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **{**Super.defaults, **kwargs})
 
@@ -715,7 +807,7 @@ class BaseTest(Unet):
         num_resnet_blocks=1,
         layer_attns=False,
         layer_cross_attns=False,
-        memory_efficient=False
+        memory_efficient=False,
     )
 
     def __init__(self, *args, **kwargs):
@@ -738,13 +830,15 @@ class SuperTest(Unet):
 
     - memory_efficient = True
     """
+
     defaults = dict(
         dim=8,
         dim_mults=(1, 2),
         num_resnet_blocks=(1, 2),
         layer_attns=False,
         layer_cross_attns=False,
-        memory_efficient=True
+        memory_efficient=True,
     )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **{**Super.defaults, **kwargs})
