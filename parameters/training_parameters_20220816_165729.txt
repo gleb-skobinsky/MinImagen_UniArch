@@ -12,5 +12,5 @@
 --CHCKPT_NUM=500
 --VALID_NUM=None
 --RESTART_DIRECTORY=None
---TESTING=True
+--TESTING=False
 --timestamp=None
