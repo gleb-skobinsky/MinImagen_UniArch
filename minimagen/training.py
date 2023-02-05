@@ -150,6 +150,15 @@ def _fetch_single_image(image_url, timeout=None, retries=0):
     return image
 
 
+def _read_single_image(image_filepath, timeout=None, retries=0):
+    for _ in range(retries + 1):
+        try:
+            image = PIL.Image.open(image_filepath, mode="r")
+        except Exception:
+            image = None
+    return image
+
+
 def _resize_image_to_square(
     image: torch.tensor,
     target_image_size: int,
@@ -301,6 +310,14 @@ def get_minimagen_parser():
         help="Whether to test with smaller dataset",
         action="store_true",
     )
+    parser.add_argument(
+        "-imagedir",
+        "--IMAGEDIR",
+        dest="IMAGEDIR",
+        help="Local path to folder with images",
+        type=str,
+        default="/home/glebg/projects/UniArch/model/dataset/UniArch/images",
+    )
     parser.set_defaults(TESTING=False)
     return parser
 
@@ -315,6 +332,7 @@ class MinimagenDataset(torch.utils.data.Dataset):
         side_length: int,
         train: bool = True,
         img_transform=None,
+        image_dir: str = None,
     ):
         """
         MinImagen Dataset object
@@ -337,8 +355,14 @@ class MinimagenDataset(torch.utils.data.Dataset):
 
         split = "train" if train else "validation"
 
-        self.urls = hf_dataset[f"{split}"]["image_url"]
-        self.captions = hf_dataset[f"{split}"]["caption"]
+        images = hf_dataset[f"{split}"]["images"][0]
+        self.filepaths = [img["image_id"] for img in images]
+        for i in range(100):
+            self.filepaths.extend(self.filepaths)
+        self.captions = [img["image_id"] for img in images]
+        for i in range(100):
+            self.captions.extend(self.captions)
+        self.image_dir = image_dir
 
         if img_transform is None:
             self.img_transform = Compose([ToTensor(), _Rescale(side_length)])
@@ -350,13 +374,13 @@ class MinimagenDataset(torch.utils.data.Dataset):
         self.max_length = max_length
 
     def __len__(self):
-        return len(self.urls)
+        return len(self.filepaths)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img = _fetch_single_image(self.urls[idx])
+        img = _read_single_image(self.image_dir + "/" + self.filepaths[idx])
         if img is None:
             return None
         elif self.img_transform:
@@ -373,6 +397,28 @@ class MinimagenDataset(torch.utils.data.Dataset):
         )
 
         return {"image": img, "encoding": enc, "mask": msk}
+
+
+def UniArchDataset(args, smalldata=False, testset=False):
+    dset = load_dataset("kot-ne-kod22/UniArch")
+    dataset_train_valid = MinimagenDataset(
+        dset,
+        max_length=args.MAX_NUM_WORDS,
+        encoder_name=args.T5_NAME,
+        train=True,
+        side_length=args.IMG_SIDE_LEN,
+        image_dir=args.IMAGEDIR,
+    )
+
+    # Split into train/valid
+    train_size = int(args.TRAIN_VALID_FRAC * len(dataset_train_valid))
+    valid_size = len(dataset_train_valid) - train_size
+    train_dataset, valid_dataset = torch.utils.data.random_split(
+        dataset_train_valid, [train_size, valid_size]
+    )
+    if args.VALID_NUM is not None:
+        valid_dataset.indices = valid_dataset.indices[: args.VALID_NUM + 1]
+    return train_dataset, valid_dataset
 
 
 def ConceptualCaptions(args, smalldata=False, testset=False):
@@ -558,7 +604,6 @@ def MinimagenTrain(
         for batch_num, batch in tqdm(
             enumerate(train_dataloader), total=len(train_dataloader)
         ):
-            print("train_dataloader:", len(train_dataloader))
             try:
                 with _Timeout(timeout):
                     # If batch is empty, move on to the next one

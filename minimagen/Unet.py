@@ -742,7 +742,7 @@ class Base(Unet):
     """
 
     defaults = dict(
-        dim=512,
+        dim=768,
         dim_mults=(1, 2, 3, 4),
         num_resnet_blocks=3,
         layer_attns=(False, True, True, True),

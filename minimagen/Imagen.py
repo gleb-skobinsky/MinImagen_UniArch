@@ -94,6 +94,7 @@ class Imagen(nn.Module):
         self.text_embed_dim = default(
             text_embed_dim, lambda: get_encoded_dim(text_encoder_name)
         )
+        print("Text embedding dimension!!!", self.text_embed_dim)
 
         # Keep track of which unet is being trained at the moment
         self.unet_being_trained_index = -1
@@ -493,7 +494,7 @@ class Imagen(nn.Module):
         assert exists(text_embeds), "text or text encodings must be passed into Imagen"
         assert not (
             exists(text_embeds) and text_embeds.shape[-1] != self.text_embed_dim
-        ), f"invalid text embedding dimension being passed in (should be {self.text_embed_dim})"
+        ), f"invalid text embedding dimension being passed in (should be {self.text_embed_dim}, is {text_embeds.shape[-1]})"
 
         batch_size = text_embeds.shape[0]
 
@@ -694,7 +695,7 @@ class Imagen(nn.Module):
         # Ensure text embeddings are right dimensionality
         assert not (
             exists(text_embeds) and text_embeds.shape[-1] != self.text_embed_dim
-        ), f"invalid text embedding dimension being passed in (should be {self.text_embed_dim})"
+        ), f"invalid text embedding dimension being passed in (should be {self.text_embed_dim}, is {text_embeds.shape[-1]})"
 
         # Create low-res conditioning information if a super-res model
         lowres_cond_img = lowres_aug_times = None

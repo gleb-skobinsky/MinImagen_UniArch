@@ -11,7 +11,7 @@ from minimagen.generate import load_minimagen, load_params
 from minimagen.t5 import get_encoded_dim
 from minimagen.training import (
     get_minimagen_parser,
-    ConceptualCaptions,
+    UniArchDataset,
     get_minimagen_dl_opts,
     create_directory,
     get_model_params,
@@ -57,9 +57,9 @@ elif args.PARAMETERS is not None:
 # If testing, lower parameter values to lower computational load and also to lower amount of data being used.
 if args.TESTING:
     args = load_testing_parameters(args)
-    train_dataset, valid_dataset = ConceptualCaptions(args, smalldata=True)
+    train_dataset, valid_dataset = UniArchDataset(args, smalldata=True)
 else:
-    train_dataset, valid_dataset = ConceptualCaptions(args, smalldata=False)
+    train_dataset, valid_dataset = UniArchDataset(args, smalldata=False)
 
 # Create dataloaders
 dl_opts = {
@@ -68,6 +68,8 @@ dl_opts = {
     "num_workers": args.NUM_WORKERS,
 }
 train_dataloader = torch.utils.data.DataLoader(train_dataset, **dl_opts)
+# for item in train_dataset:
+#     print(item)
 valid_dataloader = torch.utils.data.DataLoader(valid_dataset, **dl_opts)
 print(len(train_dataloader))
 

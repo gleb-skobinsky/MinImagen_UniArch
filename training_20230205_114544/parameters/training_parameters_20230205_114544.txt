@@ -1,10 +1,11 @@
---PARAMETERS=None
+--PARAMETERS=./parameters
 --NUM_WORKERS=0
 --BATCH_SIZE=2
 --MAX_NUM_WORDS=32
 --IMG_SIDE_LEN=128
---EPOCHS=2
---TRAIN_VALID_FRAC=0.5
+--EPOCHS=5
+--T5_NAME=sberbank-ai/ruT5-base
+--TRAIN_VALID_FRAC=0.9
 --TIMESTEPS=25
 --OPTIM_LR=0.0001
 --ACCUM_ITER=1
@@ -12,4 +13,5 @@
 --VALID_NUM=None
 --RESTART_DIRECTORY=None
 --TESTING=False
+--IMAGEDIR=/home/glebg/projects/UniArch/model/dataset/UniArch/images
 --timestamp=None
