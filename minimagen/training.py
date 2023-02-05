@@ -357,10 +357,10 @@ class MinimagenDataset(torch.utils.data.Dataset):
 
         images = hf_dataset[f"{split}"]["images"][0]
         self.filepaths = [img["image_id"] for img in images]
-        for i in range(5):
+        for i in range(10):
             self.filepaths.extend(self.filepaths)
         self.captions = [img["image_id"] for img in images]
-        for i in range(5):
+        for i in range(10):
             self.captions.extend(self.captions)
         self.image_dir = image_dir
 
