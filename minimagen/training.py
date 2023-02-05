@@ -363,10 +363,88 @@ class MinimagenDataset(torch.utils.data.Dataset):
             + self.filepaths
             + self.filepaths
             + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
+            + self.filepaths
         )
         self.captions = [img["image_id"] for img in images]
         self.captions = (
             self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
+            + self.captions
             + self.captions
             + self.captions
             + self.captions
