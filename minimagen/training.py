@@ -357,99 +357,11 @@ class MinimagenDataset(torch.utils.data.Dataset):
 
         images = hf_dataset[f"{split}"]["images"][0]
         self.filepaths = [img["image_id"] for img in images]
-        self.filepaths = (
-            self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-            + self.filepaths
-        )
+        for i in range(5):
+            self.filepaths.extend(self.filepaths)
         self.captions = [img["image_id"] for img in images]
-        self.captions = (
-            self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-            + self.captions
-        )
+        for i in range(5):
+            self.captions.extend(self.captions)
         self.image_dir = image_dir
 
         if img_transform is None:
