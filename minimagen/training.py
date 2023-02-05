@@ -316,7 +316,7 @@ def get_minimagen_parser():
         dest="IMAGEDIR",
         help="Local path to folder with images",
         type=str,
-        default="/home/glebg/projects/UniArch/model/dataset/UniArch/images",
+        default="/conent/drive/MyDrive/Colab_Notebooks/images",
     )
     parser.set_defaults(TESTING=False)
     return parser
